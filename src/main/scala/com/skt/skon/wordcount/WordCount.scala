@@ -34,15 +34,18 @@ object WordCount {
     val wordStream = textStream
       .flatMap { line => line.split("\\s") }
       .map { word => WordWithCount(word, 1) }
-      .name("Split a text to words")
+      .name("split-text-to-words")
+      .uid("split-text-to-words")
 
     val wordCount = wordStream
       .keyBy( _.word )
       .timeWindow(Time.seconds(5))
       .sum("count")
 
-    wordCount.print().name("Count words")
+    wordCount.print()
       .setParallelism(1)
+      .name("count-words")
+      .uid("count-words")
 
     // execute program
     env.execute("Flink Streaming Scala API Skeleton")
