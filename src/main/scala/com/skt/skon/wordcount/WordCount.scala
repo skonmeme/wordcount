@@ -18,14 +18,30 @@
 
 package com.skt.skon.wordcount
 
+import java.util.Properties
+
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+import com.skt.skon.wordcount.config.WordCountConfiguration
 
 case class WordWithCount(word: String, count: Int)
 
 object WordCount {
 
   def main(args: Array[String]) {
+    // configuration by arguemtnt
+    val wordcountConfiguration = WordCountConfiguration.get(args, "Word Count on Flink")
+
+    // Kafka properties
+    val consumerProperties = new Properties()
+    consumerProperties.put("bootstrap.server", wordcountConfiguration.kafkaConsumerServer.mkString(","))
+    consumerProperties.put("group.id", wordcountConfiguration.kafkaConsumerGroupID)
+
+    val producerProperties = new Properties()
+    producerProperties.put("broker.list", wordcountConfiguration.kafkaProducerServer.mkString(","))
+
     // set up the streaming execution environment
     val env = StreamExecutionEnvironment.getExecutionEnvironment
 
