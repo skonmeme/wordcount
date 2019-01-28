@@ -5,6 +5,8 @@
 plugins {
     id 'scala'
     id 'maven'
+    id 'idea'
+    id "com.github.johnrengelman.shadow" version "4.0.4"
 }
 
 repositories {
@@ -32,8 +34,8 @@ dependencies {
 
     compile group: "org.apache.flink", name: "flink-scala_$scalaVersion", version: "$flinkVersion"
     compile group: "org.apache.flink", name: "flink-streaming-scala_$scalaVersion", version: "$flinkVersion"
-    
     compile group: "org.apache.flink", name: "flink-connector-kafka_$scalaVersion", version: "$flinkVersion"
+
     compile group: "com.github.scopt", name: "scopt_$scalaVersion", version: "3.7.1"
 }
 
