@@ -68,10 +68,9 @@ object WordCount {
       .keyBy( _.word )
       .timeWindow(Time.seconds(5))
       .sum("count")
-      .name("count-words")
-      .uid("count-words-uid")
       .setParallelism(2)
       .map(w => Serialization.write(w)(DefaultFormats))
+      .setParallelism(2)
       .name("count-words")
       .uid("count-words-uid")
 
