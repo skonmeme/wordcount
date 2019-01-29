@@ -37,6 +37,7 @@ dependencies {
     compile group: "org.apache.flink", name: "flink-connector-kafka_$scalaVersion", version: "$flinkVersion"
 
     compile group: "com.github.scopt", name: "scopt_$scalaVersion", version: "3.7.1"
+    compile group: "org.json4s", name: "json4s-native_${scalaVersion}", version: "3.6.4"
 }
 
 group = 'wordcount'

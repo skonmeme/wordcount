@@ -4,10 +4,10 @@ import java.io.File
 
 import scopt.OptionParser
 
-case class WordCountConfiguration(kafkaConsumerServer: Seq[String] = Seq("localhost:9092"),
+case class WordCountConfiguration(kafkaConsumerServers: Seq[String] = Seq("localhost:9092"),
                                   kafkaConsumerTopic: String = "wordcount-text",
                                   kafkaConsumerGroupID: String = "flink-wordcount",
-                                  kafkaProducerServer: Seq[String] = Seq("localhost:9092"),
+                                  kafkaProducerServers: Seq[String] = Seq("localhost:9092"),
                                   kafkaProducerTopic: String = "wordcount-words",
                                   kafkaPorducerAnotherTopic: String = "wordcount-another"
                                  )
@@ -22,7 +22,7 @@ object WordCountConfiguration {
 
       opt[Seq[String]]("kafka-consumer-server")
         .valueName("<host1:port1>,<host2:port2>...")
-        .action((x, c) => c.copy(kafkaConsumerServer = x))
+        .action((x, c) => c.copy(kafkaConsumerServers = x))
         .text("Kafka servers to load texts")
 
       opt[String]("kafka-consumer-topic")
@@ -35,7 +35,7 @@ object WordCountConfiguration {
 
       opt[Seq[String]]("kafka-producer-server")
         .valueName("<host1:port1>,<host2:port2>...")
-        .action((x, c) => c.copy(kafkaProducerServer = x))
+        .action((x, c) => c.copy(kafkaProducerServers = x))
         .text("Kafka servers to print out words with counts")
 
       opt[String]("kafka-producer-topic")
