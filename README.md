@@ -1,8 +1,10 @@
 ## WordCount on Flink
 
-###### Open socket with port 9000 
+###### Create kafka 3 topics 
 ```
-nc -l 9000
+kafka-topics.sh --zookeeper localhost:2181 --create --topic wordcount-text --partitions 1 --replication-factor 1
+kafka-topics.sh --zookeeper localhost:2181 --create --topic wordcount-words --partitions 1 --replication-factor 1
+kafka-topics.sh --zookeeper localhost:2181 --create --topic wordcount-another --partitions 1 --replication-factor 1
 ```
 
 ###### Start Flink job

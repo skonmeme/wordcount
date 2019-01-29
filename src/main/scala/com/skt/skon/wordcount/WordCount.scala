@@ -26,14 +26,18 @@ import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKaf
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization
-
 import com.skt.skon.wordcount.config.WordCountConfiguration
+import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.util.Collector
 
 case class WordWithCount(word: String, count: Int)
 
 object WordCount {
 
   def main(args: Array[String]) {
+    // tags
+    val burstOutputTag = OutputTag[WordWithCount]("burst-output")
+
     // configuration by argument
     val wordcountConfigurations = WordCountConfiguration.get(args, "flink run -c com.skt.skon.wordcount.WordCount wordcount.jar")
 
@@ -69,12 +73,24 @@ object WordCount {
       .timeWindow(Time.seconds(5))
       .sum("count")
       .setParallelism(2)
-      .map(w => Serialization.write(w)(DefaultFormats))
-      .setParallelism(2)
       .name("count-words")
       .uid("count-words-uid")
+      .process(new ProcessFunction[WordWithCount, WordWithCount] {
+        override def processElement(value: WordWithCount,
+                                    ctx: ProcessFunction[WordWithCount, WordWithCount]#Context,
+                                    out: Collector[WordWithCount]): Unit = {
+          // emit data to regular output
+          out.collect(value)
+          // emit data to side output
+          if (value.count > 5) {
+            ctx.output(burstOutputTag, value)
+          }
+        }
+      })
 
-    wordCountStream
+    val outputStream = wordCountStream
+      .map(w => Serialization.write(w)(DefaultFormats))
+      .setParallelism(2)
       .addSink({
         val producer = new FlinkKafkaProducer[String](
           wordcountConfigurations.kafkaProducerTopic,
@@ -85,6 +101,20 @@ object WordCount {
       })
       .name("kafka-sink")
       .uid("kafka-sink-uid")
+
+    val sideOutputStream = wordCountStream.getSideOutput(burstOutputTag)
+      .map(w => Serialization.write(w)(DefaultFormats))
+      .setParallelism(2)
+      .addSink({
+        val producer = new FlinkKafkaProducer[String](
+          wordcountConfigurations.kafkaPorducerAnotherTopic,
+          new SimpleStringSchema,
+          producerProperties)
+        producer.setWriteTimestampToKafka(true)
+        producer
+      })
+      .name("kafka-burst-sink")
+      .uid("kafka-busrt-sink-uid")
 
     wordCountStream
       .print()
