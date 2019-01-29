@@ -91,8 +91,6 @@ object WordCount {
     val outputStream = wordCountStream
       .map(w => Serialization.write(w)(DefaultFormats))
       .setParallelism(2)
-      .name("count-words")
-      .uid("count-words-uid")
       .addSink({
         val producer = new FlinkKafkaProducer[String](
           wordcountConfigurations.kafkaProducerTopic,
@@ -107,8 +105,6 @@ object WordCount {
     val sideOutputStream = wordCountStream.getSideOutput(burstOutputTag)
       .map(w => Serialization.write(w)(DefaultFormats))
       .setParallelism(2)
-      .name("burst-words")
-      .uid("burst-words-uid")
       .addSink({
         val producer = new FlinkKafkaProducer[String](
           wordcountConfigurations.kafkaPorducerAnotherTopic,
