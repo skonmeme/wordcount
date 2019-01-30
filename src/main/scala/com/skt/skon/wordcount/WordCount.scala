@@ -20,15 +20,16 @@ package com.skt.skon.wordcount
 
 import java.util.Properties
 
+import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
-import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.util.Collector
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization
 import com.skt.skon.wordcount.config.WordCountConfiguration
-import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.apache.flink.util.Collector
 
 case class WordWithCount(word: String, count: Int)
 
@@ -51,6 +52,7 @@ object WordCount {
 
     // set up the streaming execution environment
     val env = StreamExecutionEnvironment.getExecutionEnvironment
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
     val textStream = env.addSource(
         new FlinkKafkaConsumer[String](
@@ -71,14 +73,13 @@ object WordCount {
     val wordCountStream = wordStream
       .keyBy( _.word )
       .timeWindow(Time.seconds(5))
+      .trigger(new WordCountTrigger)
       .sum("count")
       .setParallelism(2)
       .name("count-words")
       .uid("count-words-uid")
       .process(new ProcessFunction[WordWithCount, WordWithCount] {
-        override def processElement(value: WordWithCount,
-                                    ctx: ProcessFunction[WordWithCount, WordWithCount]#Context,
-                                    out: Collector[WordWithCount]): Unit = {
+        override def processElement(value: WordWithCount, ctx: ProcessFunction[WordWithCount, WordWithCount]#Context, out: Collector[WordWithCount]): Unit = {
           // emit data to regular output
           out.collect(value)
           // emit data to side output
