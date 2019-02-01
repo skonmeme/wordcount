@@ -21,7 +21,6 @@ package com.skt.skon.wordcount
 import java.util.Properties
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema
-import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.windowing.time.Time
@@ -30,6 +29,7 @@ import org.apache.flink.util.Collector
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization
 import com.skt.skon.wordcount.config.WordCountConfiguration
+import com.skt.skon.wordcount.trigger.BurstProcessingTimeTrigger
 
 case class WordWithCount(word: String, count: Int)
 
@@ -37,7 +37,8 @@ object WordCount {
 
   def main(args: Array[String]) {
     // tags
-    val burstOutputTag = OutputTag[WordWithCount]("burst-output")
+    val burst = 5
+    val burstOutputTag = OutputTag[String]("burst-output")
 
     // configuration by argument
     val wordcountConfigurations = WordCountConfiguration.get(args, "flink run -c com.skt.skon.wordcount.WordCount wordcount.jar")
@@ -52,7 +53,8 @@ object WordCount {
 
     // set up the streaming execution environment
     val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    // no event time
+    //env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
     val textStream = env.addSource(
         new FlinkKafkaConsumer[String](
@@ -72,24 +74,25 @@ object WordCount {
 
     val wordCountStream = wordStream
       .keyBy( _.word )
-      .timeWindow(Time.seconds(5))
-      .trigger(new WordCountTrigger)
+      .timeWindow(Time.seconds(60))
+      .trigger(new BurstProcessingTimeTrigger[WordWithCount](burst))
       .sum("count")
       .setParallelism(2)
       .name("count-words")
       .uid("count-words-uid")
       .process(new ProcessFunction[WordWithCount, WordWithCount] {
         override def processElement(value: WordWithCount, ctx: ProcessFunction[WordWithCount, WordWithCount]#Context, out: Collector[WordWithCount]): Unit = {
-          // emit data to regular output
-          out.collect(value)
-          // emit data to side output
-          if (value.count > 5) {
-            ctx.output(burstOutputTag, value)
+          if (value.count == burst + 1) {
+            // emit data to side output
+            ctx.output(burstOutputTag, s"${value.word}: bursted")
+          } else {
+            // emit data to regular output
+            out.collect(value)
           }
         }
       })
 
-    val outputStream = wordCountStream
+    wordCountStream
       .map(w => Serialization.write(w)(DefaultFormats))
       .setParallelism(2)
       .addSink({
@@ -103,7 +106,7 @@ object WordCount {
       .name("kafka-sink")
       .uid("kafka-sink-uid")
 
-    val sideOutputStream = wordCountStream.getSideOutput(burstOutputTag)
+    wordCountStream.getSideOutput(burstOutputTag)
       .map(w => Serialization.write(w)(DefaultFormats))
       .setParallelism(2)
       .addSink({
