@@ -2,10 +2,10 @@ package com.skt.skon.wordcount.trigger
 
 import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.api.common.state.ReducingStateDescriptor
-import org.apache.flink.streaming.api.windowing.triggers.{EventTimeTrigger, Trigger, TriggerResult}
+import org.apache.flink.streaming.api.windowing.triggers.{Trigger, TriggerResult}
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 
-class BurstProcessingTimeTrigger[T](burst: Int) extends Trigger[T, TimeWindow] {
+class BurstProcessingTimeTrigger[T](burst: Long) extends Trigger[T, TimeWindow] {
 
   private val countDescriptor = new ReducingStateDescriptor[Int](
     "count", new ReduceFunction[Int] {

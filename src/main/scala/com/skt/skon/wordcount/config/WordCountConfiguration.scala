@@ -1,7 +1,5 @@
 package com.skt.skon.wordcount.config
 
-import java.io.File
-
 import scopt.OptionParser
 
 case class WordCountConfiguration(kafkaConsumerServers: Seq[String] = Seq("localhost:9092"),
@@ -9,7 +7,8 @@ case class WordCountConfiguration(kafkaConsumerServers: Seq[String] = Seq("local
                                   kafkaConsumerGroupID: String = "flink-wordcount",
                                   kafkaProducerServers: Seq[String] = Seq("localhost:9092"),
                                   kafkaProducerTopic: String = "wordcount-words",
-                                  kafkaPorducerAnotherTopic: String = "wordcount-another"
+                                  kafkaPorducerAnotherTopic: String = "wordcount-another",
+                                  burst: Long = 5L
                                  )
 
 object WordCountConfiguration {
@@ -46,6 +45,9 @@ object WordCountConfiguration {
         .action((x, c) => c.copy(kafkaPorducerAnotherTopic = x))
         .text("Kafka topic to print out additional information")
 
+      opt[Long]("burst")
+        .action((x, c) => c.copy(burst = x))
+        .text("Number of counts to inform a bursting word")
     }
 
     parser.parse(args, WordCountConfiguration()) match {

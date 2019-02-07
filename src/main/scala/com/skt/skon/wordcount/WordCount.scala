@@ -22,22 +22,20 @@ import java.util.Properties
 
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.assigners.ProcessingTimeSessionWindows
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
-import org.apache.flink.util.Collector
 import org.json4s.DefaultFormats
 import org.json4s.native.Serialization
 import com.skt.skon.wordcount.config.WordCountConfiguration
+import com.skt.skon.wordcount.datatypes.WordWithCount
+import com.skt.skon.wordcount.processor.SumWithInformingBurst
 import com.skt.skon.wordcount.trigger.BurstProcessingTimeTrigger
-
-case class WordWithCount(word: String, count: Int)
 
 object WordCount {
 
   def main(args: Array[String]) {
     // tags
-    val burst = 5
     val burstOutputTag = OutputTag[String]("burst-output")
 
     // configuration by argument
@@ -74,23 +72,12 @@ object WordCount {
 
     val wordCountStream = wordStream
       .keyBy( _.word )
-      .timeWindow(Time.seconds(60))
-      .trigger(new BurstProcessingTimeTrigger[WordWithCount](burst))
-      .sum("count")
+      .window(ProcessingTimeSessionWindows.withGap(Time.seconds(5L)))
+      .trigger(new BurstProcessingTimeTrigger[WordWithCount](wordcountConfigurations.burst))
+      .process(new SumWithInformingBurst(wordcountConfigurations.burst, burstOutputTag))
       .setParallelism(2)
       .name("count-words")
       .uid("count-words-uid")
-      .process(new ProcessFunction[WordWithCount, WordWithCount] {
-        override def processElement(value: WordWithCount, ctx: ProcessFunction[WordWithCount, WordWithCount]#Context, out: Collector[WordWithCount]): Unit = {
-          if (value.count == burst + 1) {
-            // emit data to side output
-            ctx.output(burstOutputTag, s"${value.word}: bursted")
-          } else {
-            // emit data to regular output
-            out.collect(value)
-          }
-        }
-      })
 
     wordCountStream
       .map(w => Serialization.write(w)(DefaultFormats))
